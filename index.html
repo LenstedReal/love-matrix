@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>I Love You Sevgilim</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    background: #000;
+    overflow: hidden;
+    width: 100%; height: 100%;
+  }
+  canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    transition: filter 0.25s ease-out;
+  }
+  #flash {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #fff;
+    opacity: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+  .ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 10px; height: 10px;
+    border: 3px solid #ff2d75;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: 9;
+    animation: ringExpand 0.9s ease-out forwards;
+  }
+  @keyframes ringExpand {
+    0%   { width: 10px; height: 10px; opacity: 0.9; border-width: 4px; }
+    100% { width: 95vmax; height: 95vmax; opacity: 0; border-width: 0px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div id="flash"></div>
+
+<script>
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+let w, h;
+
+function init() {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+  initMatrixColumns();
+}
+window.onresize = init;
+
+/* ===========================================================
+   YARDIMCI: flaş + halka dalgası
+   =========================================================== */
+function flashScreen(strength = 0.55, dur = 200) {
+  const f = document.getElementById('flash');
+  f.style.transition = 'none';
+  f.style.opacity = strength;
+  requestAnimationFrame(() => {
+    f.style.transition = `opacity ${dur}ms ease-out`;
+    f.style.opacity = 0;
+  });
+}
+function spawnRing() {
+  const r = document.createElement('div');
+  r.className = 'ring';
+  document.body.appendChild(r);
+  setTimeout(() => r.remove(), 950);
+}
+
+/* ===========================================================
+   1) MATRIX YAĞMURU (arka plan dokusu)
+   =========================================================== */
+const matrixChars = "LOVEU♥01";
+const fontSize = 16;
+let columns, drops;
+let matrixSpeed = 1;
+
+function initMatrixColumns() {
+  columns = Math.floor(w / fontSize);
+  drops = new Array(columns).fill(0).map(() => Math.floor(Math.random() * -50));
+}
+
+function drawMatrix() {
+  ctx.font = fontSize + 'px monospace';
+  for (let i = 0; i < columns; i++) {
+    const char = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+    const x = i * fontSize;
+    const y = drops[i] * fontSize;
+
+    ctx.fillStyle = char === '♥' ? 'rgba(255,45,117,0.55)' : 'rgba(255,130,170,0.4)';
+    ctx.fillText(char, x, y);
+
+    if (y > h && Math.random() > 0.975) drops[i] = 0;
+    drops[i] += matrixSpeed;
+  }
+}
+
+/* ===========================================================
+   2) PARÇACIK SİSTEMİ (momentum tabanlı morph)
+   =========================================================== */
+init(); // w/h ve matrix sütunları hazır olsun, particles bundan sonra oluşsun
+
+class Particle {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * w;
+    this.y = Math.random() * h;
+    this.tx = this.x; this.ty = this.y;
+    this.vx = 0; this.vy = 0;
+    this.size = Math.random() * 0.9 + 1.1;
+    this.hue = Math.random() > 0.5 ? 'a' : 'b';
+  }
+  update(pull) {
+    this.vx += (this.tx - this.x) * pull;
+    this.vy += (this.ty - this.y) * pull;
+    this.vx *= 0.82; this.vy *= 0.82;
+    this.x += this.vx; this.y += this.vy;
+  }
+}
+
+init(); // particles oluşturulmadan önce w/h ve matrix sütunları hazır olmalı
+
+const PARTICLE_COUNT = 3400;
+const particles = Array.from({ length: PARTICLE_COUNT }, () => new Particle());
+const bufCanvas = document.createElement('canvas');
+const buffer = bufCanvas.getContext('2d', { willReadFrequently: true });
+let pullStrength = 0.16;
+
+function heartPath(bctx, cx, cy, scale) {
+  bctx.beginPath();
+  let first = true;
+  for (let t = 0; t < Math.PI * 2; t += 0.02) {
+    const x = 16 * Math.pow(Math.sin(t), 3) * scale;
+    const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale;
+    if (first) { bctx.moveTo(cx + x, cy + y); first = false; }
+    else bctx.lineTo(cx + x, cy + y);
+  }
+  bctx.closePath();
+  bctx.fill();
+}
+
+// Emoji konumlarını tutan global (renkli emoji ayrı katmanda çizilecek)
+let emojiSlots = []; // {char, x, y, size}
+
+function morph(text, mode) {
+  bufCanvas.width = w; bufCanvas.height = h;
+  buffer.clearRect(0, 0, w, h);
+  buffer.fillStyle = '#fff';
+  buffer.textAlign = 'center';
+  buffer.textBaseline = 'middle';
+  emojiSlots = [];
+
+  if (mode === 'heart') {
+    const scale = Math.min(w, h) * 0.024;
+    heartPath(buffer, w / 2, h / 2 - h * 0.03, scale);
+  } else if (mode === 'big') {
+    let fs = Math.min(w * 0.30, h * 0.30);
+    buffer.font = `900 ${fs}px Arial, sans-serif`;
+    while (buffer.measureText(text).width > w * 0.92 && fs > 20) {
+      fs -= 4;
+      buffer.font = `900 ${fs}px Arial, sans-serif`;
+    }
+    buffer.fillText(text, w / 2, h / 2);
+  } else if (mode === 'countdown') {
+    let fs = Math.min(w, h) * 0.55;
+    buffer.font = `900 ${fs}px Arial, sans-serif`;
+    buffer.fillText(text, w / 2, h / 2);
+  } else { // caption — emoji destekli
+    // Metni "grapheme" (görsel karakter) birimlerine ayır; emoji olanları işaretle
+    const emojiTest = /[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\u{2600}-\u{27BF}]/u;
+    let graphemes;
+    if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+      const seg = new Intl.Segmenter('en', { granularity: 'grapheme' });
+      graphemes = Array.from(seg.segment(text), s => s.segment);
+    } else {
+      graphemes = Array.from(text); // fallback (ZWJ dizilerini bölebilir ama nadir durum)
+    }
+
+    const segments = [];
+    graphemes.forEach(g => {
+      const isEmoji = emojiTest.test(g);
+      const last = segments[segments.length - 1];
+      if (isEmoji) {
+        segments.push({ type: 'emoji', value: g });
+      } else if (last && last.type === 'text') {
+        last.value += g;
+      } else {
+        segments.push({ type: 'text', value: g });
+      }
+    });
+
+    let fs = Math.min(w * 0.085, 56);
+    const emojiFontRatio = 1.15;
+    const emojiGap = () => fs * 0.55; // emoji ile yanındaki öğe arasındaki ek boşluk (belirgin ama aşırı değil)
+
+    function totalWidth(size) {
+      buffer.font = `bold ${size}px Arial, sans-serif`;
+      const gap = size * 0.55;
+      let total = 0;
+      segments.forEach((seg, idx) => {
+        if (seg.type === 'text') total += buffer.measureText(seg.value).width;
+        else total += size * emojiFontRatio;
+        // Bir sonraki segment varsa ve bu segment ya da sonraki emoji ise boşluk ekle
+        const next = segments[idx + 1];
+        if (next && (seg.type === 'emoji' || next.type === 'emoji')) total += gap;
+      });
+      return total;
+    }
+
+    while (totalWidth(fs) > w * 0.9 && fs > 14) fs -= 2;
+    buffer.font = `bold ${fs}px Arial, sans-serif`;
+
+    const fullWidth = totalWidth(fs);
+    let cursorX = w / 2 - fullWidth / 2;
+    const cy = h / 2;
+    buffer.textAlign = 'left';
+
+    segments.forEach((seg, idx) => {
+      if (seg.type === 'text') {
+        const segW = buffer.measureText(seg.value).width;
+        buffer.fillText(seg.value, cursorX, cy);
+        cursorX += segW;
+      } else {
+        const segW = fs * emojiFontRatio;
+        // Bu alanı parçacık maskesine dahil etmiyoruz (buffer'da boş bırakılıyor);
+        // gerçek emoji bu konuma ayrı bir katmanda, kendi renkleriyle çizilecek.
+        emojiSlots.push({ char: seg.value, x: cursorX + segW / 2, y: cy, size: fs * 1.3 });
+        cursorX += segW;
+      }
+      const next = segments[idx + 1];
+      if (next && (seg.type === 'emoji' || next.type === 'emoji')) {
+        cursorX += emojiGap();
+      }
+    });
+  }
+
+  const data = buffer.getImageData(0, 0, w, h).data;
+  const targets = [];
+  const step = 4;
+  for (let y = 0; y < h; y += step) {
+    for (let x = 0; x < w; x += step) {
+      const i = (y * w + x) * 4;
+      if (data[i + 3] > 128) targets.push(x, y);
+    }
+  }
+
+  for (let i = targets.length / 2 - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const ax = targets[i * 2], ay = targets[i * 2 + 1];
+    targets[i * 2] = targets[j * 2]; targets[i * 2 + 1] = targets[j * 2 + 1];
+    targets[j * 2] = ax; targets[j * 2 + 1] = ay;
+  }
+
+  const n = Math.min(targets.length / 2, particles.length);
+  for (let k = 0; k < n; k++) {
+    particles[k].tx = targets[k * 2];
+    particles[k].ty = targets[k * 2 + 1];
+  }
+  for (let k = n; k < particles.length; k++) {
+    particles[k].tx = w / 2 + (Math.random() - 0.5) * 4;
+    particles[k].ty = h / 2 + (Math.random() - 0.5) * 4;
+  }
+}
+
+function explodeParticles(strength = 1) {
+  particles.forEach(pt => {
+    const angle = Math.atan2(pt.y - h / 2, pt.x - w / 2) || Math.random() * Math.PI * 2;
+    const force = (Math.random() * 6 + 3) * strength;
+    pt.vx += Math.cos(angle) * force;
+    pt.vy += Math.sin(angle) * force;
+  });
+}
+
+/* ===========================================================
+   3) TEK RENDER DÖNGÜSÜ (matrix + parçacıklar aynı canvas)
+   =========================================================== */
+let glowBoost = 0;
+let emojiAlpha = 0; // emoji katmanının görünürlüğü (morph sonrası yumuşak belirsin)
+
+function renderFrame() {
+  // Tek fade — hem matrix izini hem parçacık izini aynı anda söndürür
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.fillStyle = 'rgba(0,0,0,0.16)';
+  ctx.fillRect(0, 0, w, h);
+
+  drawMatrix();
+
+  ctx.globalCompositeOperation = 'lighter';
+
+  for (let i = 0; i < particles.length; i++) {
+    const pt = particles[i];
+    pt.update(pullStrength);
+    ctx.fillStyle = pt.hue === 'a' ? 'rgba(255,45,117,0.95)' : 'rgba(255,190,210,0.9)';
+    ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+  }
+
+  ctx.globalCompositeOperation = 'source-over';
+
+  // Gerçek emoji katmanı — kendi renkleriyle, parçacık hedeflerinin üstüne hizalı
+  if (emojiSlots.length) {
+    if (emojiAlpha < 1) emojiAlpha = Math.min(1, emojiAlpha + 0.05);
+    ctx.save();
+    ctx.globalAlpha = emojiAlpha;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    emojiSlots.forEach(es => {
+      ctx.font = `${es.size}px "Noto Color Emoji","Segoe UI Emoji","Apple Color Emoji",sans-serif`;
+      ctx.fillText(es.char, es.x, es.y);
+    });
+    ctx.restore();
+  } else if (emojiAlpha > 0) {
+    emojiAlpha = Math.max(0, emojiAlpha - 0.08);
+  }
+
+  // Glow artık CSS filter ile (GPU'da ucuz), canvas içinde shadowBlur YOK
+  if (glowBoost > 1) {
+    canvas.style.filter = `brightness(${1 + glowBoost / 40}) saturate(1.3)`;
+  } else if (glowBoost > 0.05) {
+    canvas.style.filter = `brightness(${1 + glowBoost / 40})`;
+  } else {
+    canvas.style.filter = 'none';
+  }
+
+  if (glowBoost > 0) glowBoost *= 0.9;
+}
+
+function loop() {
+  renderFrame();
+  requestAnimationFrame(loop);
+}
+
+/* ===========================================================
+   4) SAHNE SENARYOSU
+   Matrix -> 3,2,1 -> LOVE (glitch) -> KALP (nabız) + alt yazı -> tekrar
+   =========================================================== */
+function wait(ms) { return new Promise(res => setTimeout(res, ms)); }
+
+async function runSequence() {
+  pullStrength = 0.16;
+  await wait(2000);
+
+  for (const n of ['3', '2', '1']) {
+    morph(n, 'countdown');
+    explodeParticles(0.6);
+    spawnRing();
+    flashScreen(0.3, 200);
+    matrixSpeed = 1.6;
+    glowBoost = 16;
+    await wait(950);
+  }
+
+  flashScreen(0.85, 350);
+  matrixSpeed = 1;
+
+  for (const word of ['YU', 'ARE', 'MY', 'LOVE']) {
+    explodeParticles(0.6);
+    await wait(120);
+    morph(word, 'big');
+    await wait(750);
+  }
+
+  flashScreen(0.95, 420);
+  explodeParticles(0.8);
+  spawnRing();
+  await wait(150);
+  morph('', 'heart');
+  pullStrength = 0.13;
+  await wait(2200);
+
+  for (let i = 0; i < 5; i++) {
+    pullStrength = 0.19;
+    glowBoost = 14;
+    await wait(260);
+    pullStrength = 0.12;
+    await wait(260);
+  }
+
+  morph('I LOVE 🫦❤️‍🔥 YOU SEVGILIM', 'caption');
+  pullStrength = 0.18;
+  glowBoost = 18;
+  await wait(4000);
+
+  flashScreen(0.5, 300);
+  particles.forEach(pt => pt.reset());
+  emojiSlots = [];
+  await wait(1500);
+  runSequence();
+}
+
+loop();
+runSequence();
+</script>
+</body>
+</html>
