@@ -78,7 +78,7 @@
 <body>
 
 <div id="audio-unlocker" onclick="startProject()">
-  <button class="unlock-btn">Sistemi Başlat</button>
+  <button class="unlock-btn">ŞOVU BAŞLAT ❤️‍🔥👇</button>
 </div>
 
 <canvas id="scene"></canvas>
@@ -218,20 +218,17 @@ function playGagSound() {
   osc1.type = 'triangle';
   osc2.type = 'sine';
 
-  // Geçersiz JS metotları temizlendi, kararlı linear/exponential ramp eğrileri kuruldu
   osc1.frequency.setValueAtTime(420, now);
   osc1.frequency.exponentialRampToValueAtTime(240, now + 0.5);
 
   osc2.frequency.setValueAtTime(425, now);
   osc2.frequency.exponentialRampToValueAtTime(245, now + 0.5);
 
-  // İnsansı vokal filtresi (Bandpass formant manipülasyonu)
   filter.type = 'bandpass';
   filter.frequency.setValueAtTime(800, now);
   filter.frequency.linearRampToValueAtTime(550, now + 0.4);
   filter.Q.setValueAtTime(4, now);
 
-  // Yumuşak ve nefes tonlu vokal atağı (Moan simülasyonu)
   gainNode.gain.setValueAtTime(0, now);
   gainNode.gain.linearRampToValueAtTime(0.45, now + 0.18);
   gainNode.gain.linearRampToValueAtTime(0.3, now + 0.35);
@@ -512,7 +509,7 @@ async function runSequence() {
   await wait(2000);
 
   for (const n of ['3', '2', '1']) {
-    safePlay(playCountdownSound); // Bombastik bas darbesi fırlatılır
+    safePlay(playCountdownSound);
     morph(n, 'countdown');
     explodeParticles(0.6);
     spawnRing();
@@ -526,7 +523,7 @@ async function runSequence() {
   matrixSpeed = 1;
 
   for (const word of ['YU', 'ARE', 'MY', 'LOVE']) {
-    safePlay(playWordSound); // Geçiş tikleri
+    safePlay(playWordSound);
     explodeParticles(0.6);
     await wait(120);
     morph(word, 'big');
@@ -542,7 +539,7 @@ async function runSequence() {
   await wait(2200);
 
   for (let i = 0; i < 5; i++) {
-    safePlay(playHeartbeatSound); // Sub-bass kalp atışı
+    safePlay(playHeartbeatSound);
     pullStrength = 0.19;
     glowBoost = 14;
     await wait(260);
@@ -550,7 +547,6 @@ async function runSequence() {
     await wait(260);
   }
 
-  // Akış kesilmeden doğrudan şaka sesi tetiklenir ve yazı ekrana basılır
   safePlay(playGagSound); 
   morph('I LOVE 🫦❤️‍🔥 YOU SEVGILIM', 'caption');
   pullStrength = 0.18;
@@ -575,12 +571,10 @@ function startProject() {
     unlocker.remove();
   }, 500);
 
-  // Döngüleri tetikle
   loop();
   runSequence();
 }
 
-// Canvas ve alt katman kurulumunu ilk yüklemede hazırla
 init();
 </script>
 </body>
