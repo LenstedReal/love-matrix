@@ -53,7 +53,6 @@
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    cursor: pointer;
     transition: opacity 0.5s ease;
   }
   .pointer-emoji {
@@ -74,6 +73,7 @@
     border-radius: 5px;
     box-shadow: 0 0 15px rgba(255, 45, 117, 0.4);
     transition: all 0.3s ease;
+    cursor: pointer; /* Sadece butonun tıklanabilir olduğunu belirtir */
   }
   .unlock-btn:hover {
     background: #ff2d75;
@@ -84,9 +84,9 @@
 </head>
 <body>
 
-<div id="audio-unlocker" onclick="startProject()">
+<div id="audio-unlocker">
   <div class="pointer-emoji">👇</div>
-  <button class="unlock-btn">ŞOVU BAŞLAT ❤️‍🔥🍑</button>
+  <button class="unlock-btn" onclick="startProject()">ŞOVU BAŞLAT ❤️‍🔥🍑</button>
 </div>
 
 <canvas id="scene"></canvas>
@@ -103,6 +103,17 @@ function init() {
   initMatrixColumns();
 }
 window.onresize = init;
+
+/* Arka plana geçildiğinde ses motorunu otomatik askıya alma ve uyandırma */
+document.addEventListener('visibilitychange', () => {
+  if (audioCtx && !document.getElementById('audio-unlocker')) {
+    if (document.hidden) {
+      audioCtx.suspend();
+    } else {
+      audioCtx.resume();
+    }
+  }
+});
 
 /* ===========================================================
    YARDIMCI: flaş + halka dalgası
@@ -503,14 +514,28 @@ function renderFrame() {
 }
 
 function loop() {
-  renderFrame();
+  if (!document.hidden) {
+    renderFrame();
+  }
   requestAnimationFrame(loop);
 }
 
 /* ===========================================================
    4) SAHNE SENARYOSU
    =========================================================== */
-function wait(ms) { return new Promise(res => setTimeout(res, ms)); }
+async function wait(ms) {
+  let remaining = ms;
+  while (remaining > 0) {
+    if (document.hidden) {
+      // Sekme arka plandaysa görünürlük değişene kadar yürütmeyi durdur
+      await new Promise(res => document.addEventListener('visibilitychange', res, { once: true }));
+    } else {
+      const start = Date.now();
+      await new Promise(res => setTimeout(res, Math.min(remaining, 50)));
+      remaining -= (Date.now() - start);
+    }
+  }
+}
 
 async function runSequence() {
   pullStrength = 0.16;
