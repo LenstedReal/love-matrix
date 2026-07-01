@@ -79,6 +79,141 @@ function spawnRing() {
 }
 
 /* ===========================================================
+   AUDIO ENGINE (WEB AUDIO API)
+   =========================================================== */
+let audioCtx = null;
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function playCountdownSound() {
+  initAudio();
+  if (!audioCtx) return;
+
+  const now = audioCtx.currentTime;
+  
+  // Ağır Darbe Osilatörü
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  
+  osc1.type = 'sawtooth';
+  osc2.type = 'triangle';
+  
+  osc1.frequency.setValueAtTime(140, now);
+  osc1.frequency.exponentialRampToValueAtTime(35, now + 0.6);
+  
+  osc2.frequency.setValueAtTime(70, now);
+  osc2.frequency.exponentialRampToValueAtTime(25, now + 0.6);
+  
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(0.4, now + 0.03);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+  
+  // Düşük Frekans Filtresi (Daha boğuk ve sinematik darbe için)
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(300, now);
+  
+  osc1.connect(filter);
+  osc2.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+  
+  osc1.start(now);
+  osc2.start(now);
+  osc1.stop(now + 0.7);
+  osc2.stop(now + 0.7);
+}
+
+function playWordSound() {
+  initAudio();
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(220, now);
+  osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
+  
+  gain.gain.setValueAtTime(0.15, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+  
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + 0.15);
+}
+
+function playHeartbeatSound() {
+  initAudio();
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(55, now);
+  
+  gain.gain.setValueAtTime(0.3, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+  
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + 0.18);
+}
+
+function playGagSound() {
+  initAudio();
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  
+  // Formant/Vokal benzeri bükülme için çift katmanlı osilatör düzeni
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+
+  osc1.type = 'triangle';
+  osc2.type = 'sine';
+
+  // Hızlı nefes/yükselme ve bükülme eğrisi (vokal efekti taklidi)
+  osc1.frequency.setValueAtTime(180, now);
+  osc1.frequency.quadraticCurveToValueAtTime(580, now + 0.25, 420, now + 0.6);
+  
+  osc2.frequency.setValueAtTime(185, now);
+  osc2.frequency.quadraticCurveToValueAtTime(590, now + 0.25, 415, now + 0.6);
+
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(400, now);
+  filter.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
+  filter.Q.setValueAtTime(2, now);
+
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(0.35, now + 0.15);
+  gainNode.gain.linearRampToValueAtTime(0.25, now + 0.35);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+
+  osc1.connect(filter);
+  osc2.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+
+  osc1.start(now);
+  osc2.start(now);
+  osc1.stop(now + 0.75);
+  osc2.stop(now + 0.75);
+}
+
+/* ===========================================================
    1) MATRIX YAĞMURU (arka plan dokusu)
    =========================================================== */
 const matrixChars = "LOVEU♥01";
@@ -109,7 +244,7 @@ function drawMatrix() {
 /* ===========================================================
    2) PARÇACIK SİSTEMİ (momentum tabanlı morph)
    =========================================================== */
-init(); // w/h ve matrix sütunları hazır olsun, particles bundan sonra oluşsun
+init();
 
 class Particle {
   constructor() { this.reset(); }
@@ -129,7 +264,7 @@ class Particle {
   }
 }
 
-init(); // particles oluşturulmadan önce w/h ve matrix sütunları hazır olmalı
+init();
 
 const PARTICLE_COUNT = 3400;
 const particles = Array.from({ length: PARTICLE_COUNT }, () => new Particle());
@@ -150,8 +285,8 @@ function heartPath(bctx, cx, cy, scale) {
   bctx.fill();
 }
 
-// Emoji konumlarını tutan global (renkli emoji ayrı katmanda çizilecek)
-let emojiSlots = []; // {char, x, y, size}
+let emojiSlots = [];
+let emojiAlpha = 0;
 
 function morph(text, mode) {
   bufCanvas.width = w; bufCanvas.height = h;
@@ -176,15 +311,14 @@ function morph(text, mode) {
     let fs = Math.min(w, h) * 0.55;
     buffer.font = `900 ${fs}px Arial, sans-serif`;
     buffer.fillText(text, w / 2, h / 2);
-  } else { // caption — emoji destekli
-    // Metni "grapheme" (görsel karakter) birimlerine ayır; emoji olanları işaretle
+  } else {
     const emojiTest = /[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\u{2600}-\u{27BF}]/u;
     let graphemes;
     if (typeof Intl !== 'undefined' && Intl.Segmenter) {
       const seg = new Intl.Segmenter('en', { granularity: 'grapheme' });
       graphemes = Array.from(seg.segment(text), s => s.segment);
     } else {
-      graphemes = Array.from(text); // fallback (ZWJ dizilerini bölebilir ama nadir durum)
+      graphemes = Array.from(text);
     }
 
     const segments = [];
@@ -202,7 +336,7 @@ function morph(text, mode) {
 
     let fs = Math.min(w * 0.085, 56);
     const emojiFontRatio = 1.15;
-    const emojiGap = () => fs * 0.55; // emoji ile yanındaki öğe arasındaki ek boşluk (belirgin ama aşırı değil)
+    const emojiGap = () => fs * 0.55;
 
     function totalWidth(size) {
       buffer.font = `bold ${size}px Arial, sans-serif`;
@@ -211,7 +345,6 @@ function morph(text, mode) {
       segments.forEach((seg, idx) => {
         if (seg.type === 'text') total += buffer.measureText(seg.value).width;
         else total += size * emojiFontRatio;
-        // Bir sonraki segment varsa ve bu segment ya da sonraki emoji ise boşluk ekle
         const next = segments[idx + 1];
         if (next && (seg.type === 'emoji' || next.type === 'emoji')) total += gap;
       });
@@ -233,8 +366,6 @@ function morph(text, mode) {
         cursorX += segW;
       } else {
         const segW = fs * emojiFontRatio;
-        // Bu alanı parçacık maskesine dahil etmiyoruz (buffer'da boş bırakılıyor);
-        // gerçek emoji bu konuma ayrı bir katmanda, kendi renkleriyle çizilecek.
         emojiSlots.push({ char: seg.value, x: cursorX + segW / 2, y: cy, size: fs * 1.3 });
         cursorX += segW;
       }
@@ -283,13 +414,11 @@ function explodeParticles(strength = 1) {
 }
 
 /* ===========================================================
-   3) TEK RENDER DÖNGÜSÜ (matrix + parçacıklar aynı canvas)
+   3) TEK RENDER DÖNGÜSÜ
    =========================================================== */
 let glowBoost = 0;
-let emojiAlpha = 0; // emoji katmanının görünürlüğü (morph sonrası yumuşak belirsin)
 
 function renderFrame() {
-  // Tek fade — hem matrix izini hem parçacık izini aynı anda söndürür
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = 'rgba(0,0,0,0.16)';
   ctx.fillRect(0, 0, w, h);
@@ -307,7 +436,6 @@ function renderFrame() {
 
   ctx.globalCompositeOperation = 'source-over';
 
-  // Gerçek emoji katmanı — kendi renkleriyle, parçacık hedeflerinin üstüne hizalı
   if (emojiSlots.length) {
     if (emojiAlpha < 1) emojiAlpha = Math.min(1, emojiAlpha + 0.05);
     ctx.save();
@@ -323,7 +451,6 @@ function renderFrame() {
     emojiAlpha = Math.max(0, emojiAlpha - 0.08);
   }
 
-  // Glow artık CSS filter ile (GPU'da ucuz), canvas içinde shadowBlur YOK
   if (glowBoost > 1) {
     canvas.style.filter = `brightness(${1 + glowBoost / 40}) saturate(1.3)`;
   } else if (glowBoost > 0.05) {
@@ -342,7 +469,6 @@ function loop() {
 
 /* ===========================================================
    4) SAHNE SENARYOSU
-   Matrix -> 3,2,1 -> LOVE (glitch) -> KALP (nabız) + alt yazı -> tekrar
    =========================================================== */
 function wait(ms) { return new Promise(res => setTimeout(res, ms)); }
 
@@ -351,6 +477,7 @@ async function runSequence() {
   await wait(2000);
 
   for (const n of ['3', '2', '1']) {
+    playCountdownSound(); // BOMBNASTİK BAS DARBESİ TETİKLENİR
     morph(n, 'countdown');
     explodeParticles(0.6);
     spawnRing();
@@ -364,6 +491,7 @@ async function runSequence() {
   matrixSpeed = 1;
 
   for (const word of ['YU', 'ARE', 'MY', 'LOVE']) {
+    playWordSound(); // GEÇİŞ SESİ
     explodeParticles(0.6);
     await wait(120);
     morph(word, 'big');
@@ -379,6 +507,7 @@ async function runSequence() {
   await wait(2200);
 
   for (let i = 0; i < 5; i++) {
+    playHeartbeatSound(); // KALP NABIZ SESİ
     pullStrength = 0.19;
     glowBoost = 14;
     await wait(260);
@@ -386,6 +515,7 @@ async function runSequence() {
     await wait(260);
   }
 
+  playGagSound(); // İSTEDİĞİN ÖZEL SES BURADA DEVREYE GİRER
   morph('I LOVE 🫦❤️‍🔥 YOU SEVGILIM', 'caption');
   pullStrength = 0.18;
   glowBoost = 18;
@@ -397,6 +527,10 @@ async function runSequence() {
   await wait(1500);
   runSequence();
 }
+
+// Tarayıcı kısıtlamalarını aşmak için kullanıcı etkileşimi dinleyicileri
+window.addEventListener('click', initAudio, { once: true });
+window.addEventListener('touchstart', initAudio, { once: true });
 
 loop();
 runSequence();
