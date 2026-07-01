@@ -9,6 +9,7 @@
     background: #000;
     overflow: hidden;
     width: 100%; height: 100%;
+    font-family: Arial, sans-serif;
   }
   canvas {
     position: absolute;
@@ -41,9 +42,45 @@
     0%   { width: 10px; height: 10px; opacity: 0.9; border-width: 4px; }
     100% { width: 95vmax; height: 95vmax; opacity: 0; border-width: 0px; }
   }
+  /* Tarayıcı ses engelini aşmak için estetik giriş ekranı */
+  #audio-unlocker {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    cursor: pointer;
+    transition: opacity 0.5s ease;
+  }
+  .unlock-btn {
+    padding: 20px 40px;
+    background: transparent;
+    border: 2px solid #ff2d75;
+    color: #ff2d75;
+    font-size: 1.2rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(255, 45, 117, 0.4);
+    transition: all 0.3s ease;
+  }
+  .unlock-btn:hover {
+    background: #ff2d75;
+    color: #000;
+    box-shadow: 0 0 25px rgba(255, 45, 117, 0.8);
+  }
 </style>
 </head>
 <body>
+
+<div id="audio-unlocker" onclick="startProject()">
+  <button class="unlock-btn">Sistemi Başlat</button>
+</div>
+
 <canvas id="scene"></canvas>
 <div id="flash"></div>
 
@@ -79,7 +116,7 @@ function spawnRing() {
 }
 
 /* ===========================================================
-   AUDIO ENGINE (WEB AUDIO API)
+   AUDIO ENGINE (WEB AUDIO API - STANDART METOTLAR)
    =========================================================== */
 let audioCtx = null;
 
@@ -92,125 +129,123 @@ function initAudio() {
   }
 }
 
-function playCountdownSound() {
-  initAudio();
-  if (!audioCtx) return;
+function safePlay(soundFn) {
+  try {
+    if (audioCtx && audioCtx.state === 'running') {
+      soundFn();
+    }
+  } catch (e) {
+    console.error("Audio trigger bypass:", e);
+  }
+}
 
+function playCountdownSound() {
   const now = audioCtx.currentTime;
-  
-  // Ağır Darbe Osilatörü
   const osc1 = audioCtx.createOscillator();
   const osc2 = audioCtx.createOscillator();
   const gainNode = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
   
   osc1.type = 'sawtooth';
   osc2.type = 'triangle';
   
-  osc1.frequency.setValueAtTime(140, now);
-  osc1.frequency.exponentialRampToValueAtTime(35, now + 0.6);
+  osc1.frequency.setValueAtTime(160, now);
+  osc1.frequency.exponentialRampToValueAtTime(40, now + 0.7);
   
-  osc2.frequency.setValueAtTime(70, now);
-  osc2.frequency.exponentialRampToValueAtTime(25, now + 0.6);
+  osc2.frequency.setValueAtTime(80, now);
+  osc2.frequency.exponentialRampToValueAtTime(20, now + 0.7);
   
-  gainNode.gain.setValueAtTime(0, now);
-  gainNode.gain.linearRampToValueAtTime(0.4, now + 0.03);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
-  
-  // Düşük Frekans Filtresi (Daha boğuk ve sinematik darbe için)
-  const filter = audioCtx.createBiquadFilter();
   filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(300, now);
+  filter.frequency.setValueAtTime(350, now);
   
-  osc1.connect(filter);
-  osc2.connect(filter);
-  filter.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-  
-  osc1.start(now);
-  osc2.start(now);
-  osc1.stop(now + 0.7);
-  osc2.stop(now + 0.7);
-}
-
-function playWordSound() {
-  initAudio();
-  if (!audioCtx) return;
-  const now = audioCtx.currentTime;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(220, now);
-  osc.frequency.exponentialRampToValueAtTime(440, now + 0.15);
-  
-  gain.gain.setValueAtTime(0.15, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-  
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start(now);
-  osc.stop(now + 0.15);
-}
-
-function playHeartbeatSound() {
-  initAudio();
-  if (!audioCtx) return;
-  const now = audioCtx.currentTime;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(55, now);
-  
-  gain.gain.setValueAtTime(0.3, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-  
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.start(now);
-  osc.stop(now + 0.18);
-}
-
-function playGagSound() {
-  initAudio();
-  if (!audioCtx) return;
-  const now = audioCtx.currentTime;
-  
-  // Formant/Vokal benzeri bükülme için çift katmanlı osilatör düzeni
-  const osc1 = audioCtx.createOscillator();
-  const osc2 = audioCtx.createOscillator();
-  const gainNode = audioCtx.createGain();
-  const filter = audioCtx.createBiquadFilter();
-
-  osc1.type = 'triangle';
-  osc2.type = 'sine';
-
-  // Hızlı nefes/yükselme ve bükülme eğrisi (vokal efekti taklidi)
-  osc1.frequency.setValueAtTime(180, now);
-  osc1.frequency.quadraticCurveToValueAtTime(580, now + 0.25, 420, now + 0.6);
-  
-  osc2.frequency.setValueAtTime(185, now);
-  osc2.frequency.quadraticCurveToValueAtTime(590, now + 0.25, 415, now + 0.6);
-
-  filter.type = 'bandpass';
-  filter.frequency.setValueAtTime(400, now);
-  filter.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
-  filter.Q.setValueAtTime(2, now);
-
   gainNode.gain.setValueAtTime(0, now);
-  gainNode.gain.linearRampToValueAtTime(0.35, now + 0.15);
-  gainNode.gain.linearRampToValueAtTime(0.25, now + 0.35);
+  gainNode.gain.linearRampToValueAtTime(0.5, now + 0.04);
   gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
-
+  
   osc1.connect(filter);
   osc2.connect(filter);
   filter.connect(gainNode);
   gainNode.connect(audioCtx.destination);
-
+  
   osc1.start(now);
   osc2.start(now);
   osc1.stop(now + 0.75);
   osc2.stop(now + 0.75);
+}
+
+function playWordSound() {
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(260, now);
+  osc.frequency.exponentialRampToValueAtTime(490, now + 0.12);
+  
+  gain.gain.setValueAtTime(0.12, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+  
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + 0.12);
+}
+
+function playHeartbeatSound() {
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(58, now);
+  
+  gain.gain.setValueAtTime(0.4, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+  
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + 0.2);
+}
+
+function playGagSound() {
+  const now = audioCtx.currentTime;
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const filter = audioCtx.createBiquadFilter();
+  const gainNode = audioCtx.createGain();
+
+  osc1.type = 'triangle';
+  osc2.type = 'sine';
+
+  // Geçersiz JS metotları temizlendi, kararlı linear/exponential ramp eğrileri kuruldu
+  osc1.frequency.setValueAtTime(420, now);
+  osc1.frequency.exponentialRampToValueAtTime(240, now + 0.5);
+
+  osc2.frequency.setValueAtTime(425, now);
+  osc2.frequency.exponentialRampToValueAtTime(245, now + 0.5);
+
+  // İnsansı vokal filtresi (Bandpass formant manipülasyonu)
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(800, now);
+  filter.frequency.linearRampToValueAtTime(550, now + 0.4);
+  filter.Q.setValueAtTime(4, now);
+
+  // Yumuşak ve nefes tonlu vokal atağı (Moan simülasyonu)
+  gainNode.gain.setValueAtTime(0, now);
+  gainNode.gain.linearRampToValueAtTime(0.45, now + 0.18);
+  gainNode.gain.linearRampToValueAtTime(0.3, now + 0.35);
+  gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+
+  osc1.connect(filter);
+  osc2.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(audioCtx.destination);
+
+  osc1.start(now);
+  osc2.start(now);
+  osc1.stop(now + 0.65);
+  osc2.stop(now + 0.65);
 }
 
 /* ===========================================================
@@ -477,7 +512,7 @@ async function runSequence() {
   await wait(2000);
 
   for (const n of ['3', '2', '1']) {
-    playCountdownSound(); // BOMBNASTİK BAS DARBESİ TETİKLENİR
+    safePlay(playCountdownSound); // Bombastik bas darbesi fırlatılır
     morph(n, 'countdown');
     explodeParticles(0.6);
     spawnRing();
@@ -491,7 +526,7 @@ async function runSequence() {
   matrixSpeed = 1;
 
   for (const word of ['YU', 'ARE', 'MY', 'LOVE']) {
-    playWordSound(); // GEÇİŞ SESİ
+    safePlay(playWordSound); // Geçiş tikleri
     explodeParticles(0.6);
     await wait(120);
     morph(word, 'big');
@@ -507,7 +542,7 @@ async function runSequence() {
   await wait(2200);
 
   for (let i = 0; i < 5; i++) {
-    playHeartbeatSound(); // KALP NABIZ SESİ
+    safePlay(playHeartbeatSound); // Sub-bass kalp atışı
     pullStrength = 0.19;
     glowBoost = 14;
     await wait(260);
@@ -515,7 +550,8 @@ async function runSequence() {
     await wait(260);
   }
 
-  playGagSound(); // İSTEDİĞİN ÖZEL SES BURADA DEVREYE GİRER
+  // Akış kesilmeden doğrudan şaka sesi tetiklenir ve yazı ekrana basılır
+  safePlay(playGagSound); 
   morph('I LOVE 🫦❤️‍🔥 YOU SEVGILIM', 'caption');
   pullStrength = 0.18;
   glowBoost = 18;
@@ -528,12 +564,24 @@ async function runSequence() {
   runSequence();
 }
 
-// Tarayıcı kısıtlamalarını aşmak için kullanıcı etkileşimi dinleyicileri
-window.addEventListener('click', initAudio, { once: true });
-window.addEventListener('touchstart', initAudio, { once: true });
+/* ===========================================================
+   BAŞLATICI FONKSİYON (Autoplay Bypass)
+   =========================================================== */
+function startProject() {
+  initAudio();
+  const unlocker = document.getElementById('audio-unlocker');
+  unlocker.style.opacity = '0';
+  setTimeout(() => {
+    unlocker.remove();
+  }, 500);
 
-loop();
-runSequence();
+  // Döngüleri tetikle
+  loop();
+  runSequence();
+}
+
+// Canvas ve alt katman kurulumunu ilk yüklemede hazırla
+init();
 </script>
 </body>
 </html>
