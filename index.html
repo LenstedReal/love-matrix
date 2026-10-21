@@ -2,214 +2,164 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=980, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>kalbin — lenstedreal@kali:~</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  html, body {
-    width: 100%; height: 100%;
-    background: #0d0f14;
-    overflow: hidden;
-    overscroll-behavior: none;
-    font-family: 'JetBrains Mono', monospace;
-    color: #c9d1d9;
-    position: fixed;
-    inset: 0;
-    -webkit-tap-highlight-color: transparent;
-  }
+:root {
+  color-scheme: dark;
+  --bg: #05060b;
+  --panel: rgba(8, 10, 18, .94);
+  --line: rgba(255, 255, 255, .11);
+  --pink: #ff3d87;
+  --pink-soft: #ff83b0;
+  --blue: #6d9dff;
+  --muted: #7f899c;
+  --text: #f6f7fb;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; min-height: 100%; background: var(--bg); color: var(--text);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  overscroll-behavior: none; -webkit-tap-highlight-color: transparent;
+}
+body { position: fixed; inset: 0; overflow: hidden; }
+#viewport-lock {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; isolation: isolate;
+  background:
+    radial-gradient(ellipse at 18% 16%, rgba(61, 94, 177, .18), transparent 38%),
+    radial-gradient(ellipse at 85% 82%, rgba(255, 45, 117, .13), transparent 36%),
+    #05060b;
+}
+#viewport-lock::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black, transparent 95%);
+}
+#stage { position: relative; width: 100%; height: 100%; flex-shrink: 0; overflow: hidden; }
+#boot-splash {
+  position: absolute; inset: 0; z-index: 200; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 25px; background: #05060b;
+  transition: opacity .65s ease;
+}
+#boot-splash::before {
+  content: ""; position: absolute; width: min(70vw, 430px); aspect-ratio: 1;
+  border-radius: 50%; background: rgba(255, 45, 117, .09); filter: blur(75px);
+}
+.boot-logo { position: relative; display: flex; flex-direction: column; align-items: center; gap: 18px;
+  font-size: clamp(23px, 6vw, 34px); font-weight: 800; color: #fff; letter-spacing: .32em; }
+.boot-mark { width: min(110px, 24vw); height: min(110px, 24vw); animation: dragonPulse 1.8s ease-in-out infinite; }
+@keyframes dragonPulse {
+  0%,100% { filter: drop-shadow(0 0 12px rgba(109,157,255,.5)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 26px rgba(255,61,135,.7)); transform: scale(1.045); }
+}
+.boot-bar-track { position: relative; width: min(260px, 64vw); height: 4px; overflow: hidden;
+  background: rgba(255,255,255,.1); border-radius: 99px; box-shadow: 0 0 24px rgba(255,61,135,.12); }
+.boot-bar-fill { height: 100%; width: 0; border-radius: inherit;
+  background: linear-gradient(90deg, var(--blue), var(--pink)); transition: width 2.1s cubic-bezier(.2,.6,.2,1); }
+.boot-caption { position: relative; min-height: 16px; color: #81899a; font-size: 11px;
+  letter-spacing: .12em; text-transform: uppercase; }
+#terminal-wrapper {
+  position: absolute; inset: 0; display: flex; justify-content: center; align-items: center;
+  padding: clamp(12px, 3vw, 30px); z-index: 100;
+  transition: opacity .6s ease, transform .6s ease;
+}
+.terminal-box {
+  position: relative; width: min(880px, 100%); height: min(630px, calc(100% - 8px));
+  display: flex; flex-direction: column; overflow: hidden;
+  background: linear-gradient(145deg, rgba(12,15,25,.97), rgba(4,5,10,.97));
+  border: 1px solid rgba(130,151,205,.25); border-radius: 18px;
+  box-shadow: 0 30px 100px rgba(0,0,0,.72), 0 0 0 1px rgba(255,255,255,.025) inset,
+              0 0 70px rgba(255,45,117,.08);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+}
+.terminal-box::before {
+  content: ""; position: absolute; left: 8%; right: 8%; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,90,150,.7), rgba(109,157,255,.65), transparent);
+}
+.terminal-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 17px; background: rgba(255,255,255,.025);
+  border-bottom: 1px solid var(--line); flex-shrink: 0; user-select: none;
+}
+.header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.header-mark { width: 17px; height: 17px; flex-shrink: 0; filter: drop-shadow(0 0 8px rgba(109,157,255,.4)); }
+.term-title { color: #c4cbda; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-right { display: flex; align-items: center; gap: 7px; }
+.win-btn { display: grid; place-items: center; width: 23px; height: 23px; border: 1px solid rgba(255,255,255,.08);
+  border-radius: 7px; color: #758098; font-size: 12px; }
+.win-btn.win-close { color: #ff779d; }
+.terminal-body {
+  padding: clamp(16px, 3vw, 25px); overflow-y: auto; flex: 1; min-height: 0;
+  font-size: clamp(11px, 1.8vw, 14px); line-height: 1.8; color: #f0f4fc;
+  scrollbar-width: thin; scrollbar-color: rgba(255,61,135,.45) transparent;
+}
+.terminal-body::-webkit-scrollbar { width: 5px; }
+.terminal-body::-webkit-scrollbar-thumb { background: rgba(255,61,135,.4); border-radius: 10px; }
+.kali-prompt-line { color: #8791a5; margin-top: 7px; overflow-wrap: anywhere; }
+.kali-user { color: var(--blue); font-weight: 700; }
+.kali-at { color: #f3f5fa; }
+.kali-host { color: #89aaff; font-weight: 700; }
+.kali-path { color: #fff; font-weight: 600; }
+.kali-char { color: var(--pink); font-weight: 700; }
+.log-line { margin-bottom: 5px; overflow-wrap: anywhere; }
+.sys-info { color: #8791a5; }
+.warn-info { color: #ff6b83; font-weight: 600; }
+.pkg-info { color: #83b4ff; }
+.status-ok { color: #73e6a4; font-weight: 700; }
+.love-tag { color: var(--pink); font-weight: 700; text-shadow: 0 0 12px rgba(255,61,135,.65); }
+.tr-note { color: #8b7890; font-style: italic; font-weight: 400; font-size: .9em; }
+#term-form { display: flex; flex-direction: column; padding: 13px clamp(16px,3vw,25px) 10px; gap: 7px;
+  border-top: 1px solid rgba(255,255,255,.07); background: rgba(0,0,0,.2); flex-shrink: 0; }
+.input-row { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+#term-input { flex: 1; min-width: 0; background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.09);
+  border-radius: 10px; padding: 10px 12px; outline: none; color: #fff; font: inherit; font-size: 14px;
+  caret-color: var(--pink); transition: border-color .2s, box-shadow .2s; }
+#term-input:focus { border-color: rgba(255,61,135,.65); box-shadow: 0 0 0 3px rgba(255,61,135,.09); }
+#term-input::placeholder { color: #667086; }
+#term-send { flex-shrink: 0; width: 42px; height: 40px; border-radius: 10px;
+  border: 1px solid rgba(255,61,135,.35); background: linear-gradient(135deg, rgba(255,61,135,.2), rgba(109,157,255,.12));
+  color: #ff82ae; font-size: 17px; cursor: pointer; transition: transform .18s, background .18s; }
+#term-send:active { transform: scale(.95); background: rgba(255,61,135,.3); }
+.tap-hint { text-align: center; color: #687187; font-size: 10px; line-height: 1.5; padding: 0 14px 13px; flex-shrink: 0; }
+canvas#scene { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; opacity: 0;
+  pointer-events: none; transition: opacity .8s ease, filter .25s ease-out; }
+canvas#scene.visible { opacity: 1; }
+#flash { position: fixed; inset: 0; background: #fff; opacity: 0; z-index: 50; pointer-events: none; }
+.ring { position: fixed; top: 50%; left: 50%; width: 10px; height: 10px; border: 2px solid var(--pink);
+  border-radius: 50%; transform: translate(-50%,-50%); opacity: .9; pointer-events: none; z-index: 40;
+  animation: ringExpand .9s cubic-bezier(.1,.8,.3,1) forwards; }
+@keyframes ringExpand { 0% { width: 10px; height: 10px; opacity: .9; border-width: 3px; }
+  100% { width: 120vmax; height: 120vmax; opacity: 0; border-width: 0; } }
+@media (max-width: 520px) {
+  .terminal-box { border-radius: 14px; height: min(610px, calc(100% - 4px)); }
+  .terminal-header { padding: 12px 13px; }
+  .terminal-body { padding: 15px 13px; font-size: 11px; line-height: 1.75; }
+  #term-form { padding: 11px 13px 8px; }
+  #term-input { font-size: 12px; padding: 11px 9px; }
+  #term-send { width: 39px; height: 39px; }
+  .tap-hint { font-size: 9px; padding: 0 10px 11px; }
+  .header-right { gap: 4px; }
+  .win-btn { width: 20px; height: 20px; }
+}
+@media (max-height: 520px) {
+  #terminal-wrapper { padding: 8px; }
+  .terminal-box { height: calc(100% - 4px); }
+  .terminal-header { padding: 7px 12px; }
+  .terminal-body { padding: 10px 14px; }
+  #term-form { padding: 7px 14px 5px; }
+  .tap-hint { padding-bottom: 6px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
 
-  #viewport-lock {
-    position: fixed; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden; background: #0d0f14;
-  }
-
-  #stage {
-    position: relative;
-    width: 100%; height: 100%;
-    flex-shrink: 0;
-    overflow: hidden;
-  }
-
-  /* ================= AÇILIŞ (BOOT) EKRANI ================= */
-  #boot-splash {
-    position: absolute; inset: 0;
-    z-index: 200;
-    background: #000;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 22px;
-    transition: opacity 0.6s ease;
-  }
-  .boot-logo {
-    display: flex; flex-direction: column; align-items: center; gap: 20px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: clamp(20px, 6vw, 28px); font-weight: 800;
-    color: #ffffff; letter-spacing: 5px;
-  }
-  .boot-mark {
-    width: min(104px, 24vw); height: min(104px, 24vw);
-    animation: dragonPulse 1.8s ease-in-out infinite;
-  }
-  @keyframes dragonPulse {
-    0%, 100% { filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.55)); transform: scale(1); }
-    50%      { filter: drop-shadow(0 0 24px rgba(59, 130, 246, 0.9)); transform: scale(1.04); }
-  }
-  .boot-bar-track {
-    width: 220px; height: 4px;
-    background: rgba(255, 255, 255, 0.12);
-    border-radius: 2px; overflow: hidden;
-  }
-  .boot-bar-fill {
-    height: 100%; width: 0%;
-    background: linear-gradient(90deg, #3b82f6, #ff2d75);
-    border-radius: 2px;
-    transition: width 2.1s cubic-bezier(0.2, 0.6, 0.2, 1);
-  }
-  .boot-caption {
-    font-family: 'JetBrains Mono', monospace;
-    color: #6e7681; font-size: 13px; letter-spacing: 0.5px;
-    min-height: 16px;
-  }
-
-  /* ================= KALI LINUX TERMINAL BİREBİR TEMA ================= */
-  #terminal-wrapper {
-    position: absolute; inset: 0;
-    display: flex; justify-content: center; align-items: center;
-    padding: 20px; z-index: 100;
-    transition: opacity 0.6s ease, transform 0.6s ease;
-  }
-
-  .terminal-box {
-    width: min(820px, 88vw);
-    height: min(560px, 84vh);
-    background: rgba(0, 0, 0, 0.96);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(59, 130, 246, 0.3);
-    border-radius: 8px;
-    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.85), 0 0 35px rgba(255, 45, 117, 0.15);
-    display: flex; flex-direction: column;
-    overflow: hidden;
-  }
-
-  .terminal-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 16px;
-    background: #000000;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    flex-shrink: 0;
-    user-select: none;
-  }
-
-  .header-left { display: flex; align-items: center; gap: 9px; }
-  .header-mark { width: 14px; height: 14px; flex-shrink: 0; }
-  .term-title { color: #9da7b3; font-size: 14px; font-weight: 600; }
-  .header-right { display: flex; align-items: center; gap: 15px; }
-  .win-btn { font-size: 14px; line-height: 1; color: #6e7681; user-select: none; }
-  .win-btn.win-close { font-size: 12px; }
-
-  .terminal-body {
-    padding: 18px 20px;
-    overflow-y: auto; flex-grow: 1;
-    font-size: 16px; line-height: 1.6;
-    color: #f0f6fc;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 45, 117, 0.4) transparent;
-  }
-  .terminal-body::-webkit-scrollbar { width: 6px; }
-  .terminal-body::-webkit-scrollbar-thumb { background: rgba(255, 45, 117, 0.4); border-radius: 3px; }
-
-  /* Kali ZSH Prompt Renk Formatı */
-  .kali-prompt-line { color: #8b949e; margin-top: 6px; }
-  .kali-user { color: #3b82f6; font-weight: 700; }
-  .kali-at { color: #ffffff; }
-  .kali-host { color: #3b82f6; font-weight: 700; }
-  .kali-path { color: #ffffff; font-weight: 600; }
-  .kali-char { color: #3b82f6; font-weight: 700; }
-
-  .log-line { margin-bottom: 4px; word-break: break-word; }
-  .sys-info { color: #8b949e; }
-  .warn-info { color: #f85149; font-weight: 600; }
-  .pkg-info { color: #58a6ff; }
-  .status-ok { color: #3fb950; font-weight: 700; }
-  .love-tag { color: #ff2d75; font-weight: 700; text-shadow: 0 0 10px rgba(255, 45, 117, 0.6); }
-  .tr-note { color: #6e7681; font-style: italic; font-weight: 400; font-size: 0.93em; }
-
-  #term-form {
-    display: flex; flex-direction: column;
-    padding: 10px 20px 14px;
-    gap: 4px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-    background: #000000; flex-shrink: 0;
-  }
-
-  .input-row { display: flex; align-items: center; gap: 8px; }
-
-#term-input {
-    flex-grow: 1;
-    background: transparent;
-    border: none; outline: none;
-    color: #ffffff;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 16px;
-    caret-color: #ff2d75;
-  }
-
-  #term-send {
-    flex-shrink: 0;
-    width: 32px; height: 32px;
-    border-radius: 6px;
-    border: 1px solid rgba(59, 130, 246, 0.4);
-    background: rgba(59, 130, 246, 0.15);
-    color: #3b82f6;
-    font-size: 16px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-  }
-  #term-send:active { background: rgba(59, 130, 246, 0.35); }
-
-  .tap-hint {
-    text-align: center; color: #484f58;
-    font-size: 12px; padding: 0 16px 8px;
-    flex-shrink: 0;
-  }
-
-  /* ================= VISUAL CANVAS ================= */
-  canvas#scene {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%;
-    z-index: 1; opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.8s ease, filter 0.25s ease-out;
-  }
-  canvas#scene.visible { opacity: 1; }
-
-  #flash {
-    position: fixed; inset: 0;
-    background: #ffffff; opacity: 0;
-    z-index: 50; pointer-events: none;
-  }
-
-  .ring {
-    position: fixed;
-    top: 50%; left: 50%;
-    width: 10px; height: 10px;
-    border: 3px solid #ff2d75;
-    border-radius: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 0.9;
-    pointer-events: none;
-    z-index: 40;
-    animation: ringExpand 0.9s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
-  }
-  @keyframes ringExpand {
-    0%   { width: 10px; height: 10px; opacity: 0.9; border-width: 4px; }
-    100% { width: 120vmax; height: 120vmax; opacity: 0; border-width: 0px; }
-  }
 </style>
 </head>
 <body>
@@ -444,7 +394,7 @@ termInput.addEventListener('focus', unlockOnce);
 const viewportMetaEl = document.querySelector('meta[name="viewport"]');
 const defaultViewportContent = viewportMetaEl.getAttribute('content');
 const lockInputZoom = () => {
-  viewportMetaEl.setAttribute('content', 'width=980, maximum-scale=1, user-scalable=no');
+  viewportMetaEl.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover');
 };
 const restoreZoom = () => {
   viewportMetaEl.setAttribute('content', defaultViewportContent);
