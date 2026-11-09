@@ -18,14 +18,10 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-/* Telefonda masaüstü düzeni: sayfa 980 px çizilir, ölçek ekran genişliğine göre ayarlanır (tam sığar). */
-const FIT_DESKTOP = `(function(){var W=980;function f(){var l=window.matchMedia&&matchMedia("(orientation: landscape)").matches;var s=l?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);if(!s||s>=W)return;var m=document.querySelector('meta[name="viewport"]');if(!m){m=document.createElement("meta");m.name="viewport";document.head.appendChild(m)}var c="width="+W+", initial-scale="+(s/W).toFixed(4)+", viewport-fit=cover";if(m.getAttribute("content")!==c)m.setAttribute("content",c)}f();document.addEventListener("DOMContentLoaded",f);window.addEventListener("orientationchange",function(){setTimeout(f,150)})})();`;
-
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="tr">
       <head>
-        <script dangerouslySetInnerHTML={{ __html: FIT_DESKTOP }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
