@@ -18,8 +18,9 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-/* Telefonda Chrome'un "Masaüstü sitesi" görünümü: sayfa 980 px genişlikte çizilir, tarayıcı ekrana sığdırır. */
-const DESKTOP_VIEW = `(function(){var W=980;function f(){var s=Math.min(screen.width||W,screen.height||W);var touch=window.matchMedia&&matchMedia("(pointer: coarse)").matches;if(!touch||s>=W)return;var m=document.querySelector('meta[name="viewport"]');if(!m){m=document.createElement("meta");m.name="viewport";document.head.appendChild(m)}var c="width="+W+", viewport-fit=cover";if(m.getAttribute("content")!==c)m.setAttribute("content",c)}f();document.addEventListener("DOMContentLoaded",f)})();`;
+/* Telefonda Chrome'un "Masaüstü sitesi" görünümü: sayfa 980 px çizilir, tarayıcı ekrana sığdırır.
+   Next.js görünüm ayarını geri yazarsa anında yeniden uygulanır (geri dönme olmaz). */
+const DESKTOP_VIEW = `(function(){var W=980,C="width="+W+", viewport-fit=cover";var s=Math.min(screen.width||W,screen.height||W);var touch=window.matchMedia&&matchMedia("(pointer: coarse)").matches;if(!touch||s>=W)return;function f(){var ms=document.querySelectorAll('meta[name="viewport"]');if(!ms.length){var m=document.createElement("meta");m.name="viewport";m.content=C;document.head.appendChild(m);return}for(var i=0;i<ms.length;i++){if(ms[i].getAttribute("content")!==C)ms[i].setAttribute("content",C)}}f();new MutationObserver(f).observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:["content"]})})();`;
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
