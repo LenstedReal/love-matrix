@@ -18,10 +18,14 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
+/* Telefonda Chrome'un "Masaüstü sitesi" görünümü: sayfa 980 px genişlikte çizilir, tarayıcı ekrana sığdırır. */
+const DESKTOP_VIEW = `(function(){var W=980;function f(){var s=Math.min(screen.width||W,screen.height||W);var touch=window.matchMedia&&matchMedia("(pointer: coarse)").matches;if(!touch||s>=W)return;var m=document.querySelector('meta[name="viewport"]');if(!m){m=document.createElement("meta");m.name="viewport";document.head.appendChild(m)}var c="width="+W+", viewport-fit=cover";if(m.getAttribute("content")!==c)m.setAttribute("content",c)}f();document.addEventListener("DOMContentLoaded",f)})();`;
+
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="tr">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: DESKTOP_VIEW }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
