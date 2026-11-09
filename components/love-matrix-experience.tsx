@@ -1,193 +1,169 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import AmbientCanvas from "@/components/ambient-canvas";
+import Link from "next/link";
+import { useCallback, useRef, useState } from "react";
 import BootOverlay from "@/components/boot-overlay";
-import EyePortal from "@/components/eye-portal";
 import ImmersiveLoveSequence from "@/components/immersive-love-sequence";
+import RubyHeartCanvas, { type RubyHeartHandle } from "@/components/ruby-heart-canvas";
 import TerminalGate from "@/components/terminal-gate";
+import { sfx } from "@/lib/audio";
+import { PHRASES, PHRASE_KEYS, RTL_KEYS } from "@/lib/phrases";
 
 function BrandMark() {
   return (
-    <svg className="brand-mark" viewBox="0 0 44 44" fill="none" aria-hidden="true">
-      <rect x=".5" y=".5" width="43" height="43" rx="14" fill="#171622" />
-      <path d="M22 32.7 10.4 21.8C3.7 14.9 14.5 5.9 22 14.1c7.5-8.2 18.3.8 11.6 7.7L22 32.7Z" fill="url(#brandHeart)" />
-      <path d="M10.6 22h6.2l3.1-5.8 4.4 12 3.2-6.2h6" stroke="#fff" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-      <defs><linearGradient id="brandHeart" x1="5" y1="9" x2="36" y2="34" gradientUnits="userSpaceOnUse"><stop stopColor="#FF6C9F"/><stop offset="1" stopColor="#8D8DFF"/></linearGradient></defs>
+    <svg className="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+      <rect x=".5" y=".5" width="39" height="39" rx="12" stroke="url(#bm-line)" />
+      <path d="M20 30.4 9.6 20.6c-6-6.2 3.7-14.3 10.4-6.9 6.7-7.4 16.4.7 10.4 6.9L20 30.4Z" fill="url(#bm-fill)" />
+      <path d="M9.8 20.2h5.5l2.7-5.1 3.9 10.6 2.8-5.5h5.4" stroke="#fff" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" opacity=".9" />
+      <defs>
+        <linearGradient id="bm-fill" x1="6" y1="8" x2="34" y2="32" gradientUnits="userSpaceOnUse"><stop stopColor="#ff7aa6" /><stop offset="1" stopColor="#c8103f" /></linearGradient>
+        <linearGradient id="bm-line" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse"><stop stopColor="#e8c39e" stopOpacity=".7" /><stop offset="1" stopColor="#e8c39e" stopOpacity=".1" /></linearGradient>
+      </defs>
     </svg>
   );
 }
 
-function ArrowUpRight() {
-  return <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4.5 15.5 15 5M6 5h9v9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-}
+const STEPS = [
+  { n: "01", title: "Komut", code: "sudo su - kalbin", body: "Kalbimin sistemine tam yetkiyle girmeyi dene. Kapı tek bir komutla açılır." },
+  { n: "02", title: "Parola", code: "[sudo] password: ••••••", body: "Parolayı yalnızca sen bilirsin. Yanlış girersen sistem sana küçük bir ipucu fısıldar." },
+  { n: "03", title: "Okuma / yazma izni", code: "chmod +rw /dev/kalp", body: "Kalbimi okumana ve ona yazmana izin ver. Tek kelime yeter: yes." },
+  { n: "04", title: "Çekirdek", code: "3 · 2 · 1 → YOU ARE MY LOVE", body: "Geri sayım, parçacıklardan bir kalp ve tek bir cümle: I love you sevgilim." },
+];
 
-function SignalIcon({ type }: { type: "lock" | "heart" | "orbit" }) {
-  if (type === "lock") return <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><rect x="6.5" y="13" width="19" height="14" rx="4" stroke="currentColor" strokeWidth="1.5"/><path d="M11 13V9a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="1.5"/><circle cx="16" cy="20" r="1.5" fill="currentColor"/></svg>;
-  if (type === "heart") return <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 27S4 19.8 4 11.4C4 4.7 12 3 16 9c4-6 12-4.3 12 2.4C28 19.8 16 27 16 27Z" stroke="currentColor" strokeWidth="1.5"/><path d="M7 16h6l2.5-4 3.5 8 2.2-4H26" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/></svg>;
-  return <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><ellipse cx="16" cy="16" rx="13" ry="5.5" stroke="currentColor" strokeWidth="1.4" transform="rotate(-35 16 16)"/><ellipse cx="16" cy="16" rx="13" ry="5.5" stroke="currentColor" strokeWidth="1.4" transform="rotate(52 16 16)"/><circle cx="16" cy="16" r="2.7" fill="currentColor"/></svg>;
+function Marquee() {
+  const rows = [PHRASE_KEYS.slice(0, 34), PHRASE_KEYS.slice(34, 67), PHRASE_KEYS.slice(67)];
+  return (
+    <div className="marquee" aria-hidden="true">
+      {rows.map((row, r) => (
+        <div className={`marquee-row${r % 2 ? " is-rev" : ""}`} key={r} style={{ animationDuration: `${70 + r * 12}s` }}>
+          {[0, 1].map((copy) => (
+            <div className="marquee-track" key={copy}>
+              {row.map((k) => (
+                <span className="marquee-item" key={k}>
+                  <span className="marquee-phrase" lang={PHRASES[k].v} dir={RTL_KEYS.has(k) ? "rtl" : "ltr"}>{PHRASES[k].text}</span>
+                  <span className="marquee-lang">{PHRASES[k].tr}</span>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function LoveMatrixExperience() {
-  const [sequenceOpen, setSequenceOpen] = useState(false);
-  const startSequence = useCallback(() => setSequenceOpen(true), []);
-  const closeSequence = useCallback(() => setSequenceOpen(false), []);
+  const [open, setOpen] = useState(false);
+  const start = useCallback(() => setOpen(true), []);
+  const close = useCallback(() => setOpen(false), []);
+  const heart = useRef<RubyHeartHandle>(null);
 
-  useEffect(() => {
-    const elements = document.querySelectorAll<HTMLElement>(".reveal-on-scroll");
-    if (!("IntersectionObserver" in window)) {
-      elements.forEach((element) => element.classList.add("is-visible"));
-      return;
-    }
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.12, rootMargin: "0px 0px -30px 0px" });
-    elements.forEach((element) => observer.observe(element));
-    return () => observer.disconnect();
-  }, []);
+  const tapHeart = () => {
+    heart.current?.nextMode();
+    sfx("heartbeat");
+  };
 
   return (
     <>
       <BootOverlay />
-      <div className="site-shell">
-        <header className="site-header">
+      <div className="lm" id="top">
+        <header className="nav">
           <a className="brand" href="#top" aria-label="Love Matrix ana sayfa">
             <BrandMark />
             <span className="brand-copy"><strong>LOVE MATRIX</strong><small>A UNIVERSE FOR ONE</small></span>
           </a>
-          <nav className="main-nav" aria-label="Ana gezinme">
-            <a href="#story">Hikâye</a>
-            <a href="#signal">Evren</a>
-            <a href="#access">Erişim protokolü</a>
+          <nav className="nav-links" aria-label="Ana gezinme">
+            <a href="#protokol">Protokol</a>
+            <a href="#erisim">Erişim</a>
+            <Link href="/100-dil">100 dil</Link>
           </nav>
-          <a className="header-cta" href="#access"><span>Kalbe bağlan</span><ArrowUpRight /></a>
+          <a className="nav-cta" href="#erisim">Kalbe bağlan <span aria-hidden="true">↗</span></a>
         </header>
 
         <main>
-          <section className="hero-section" id="top">
-            <AmbientCanvas />
+          <section className="hero">
             <div className="hero-copy">
-              <div className="eyebrow"><span className="eyebrow-line"/><span>PRIVATE SIGNAL / 001</span><span className="eyebrow-dot"/> <span>ONLY ONE ACCESS</span></div>
-              <h1>Bir kalp.<br/><em>Sonsuz</em> bir <span className="hero-title-last">evren.</span></h1>
-              <p className="hero-lede">Bazı kapılar anahtarla değil, doğru hisle açılır. Bu küçük evren; biricik bir kalbe, tek bir kişiye ayrıldı.</p>
-              <div className="hero-actions">
-                <a className="button button--dark" href="#access"><span>Erişim başlat</span><ArrowUpRight /></a>
-                <a className="text-link" href="#story"><span className="text-link__play">↓</span> Hikâyeyi keşfet</a>
+              <p className="eyebrow"><span className="dot" /> PRIVATE SIGNAL · 001 <span className="sep" /> ONLY ONE ACCESS</p>
+              <h1>Bir kalp.<br /><em>Sonsuz</em> bir evren.</h1>
+              <p className="lede">Bazı kapılar anahtarla değil, doğru hisle açılır. Bu küçük evren tek bir kişiye ayrıldı. Komutu yaz, parolanı gir, kalbe gir.</p>
+              <div className="cta-row">
+                <a className="btn btn--ruby" href="#erisim">Erişimi başlat <span aria-hidden="true">↗</span></a>
+                <Link className="btn btn--ghost" href="/100-dil">100 dilde dinle</Link>
               </div>
-              <div className="hero-footnotes">
-                <div><span className="footnote-index">01</span><span><strong>PRIVATE BY DESIGN</strong><small>Sana ait, sana özel.</small></span></div>
-                <div><span className="footnote-index">∞</span><span><strong>NO EXPIRATION</strong><small>Hisler için zaman yok.</small></span></div>
-              </div>
+              <dl className="hero-stats">
+                <div><dt>001</dt><dd>TEK ALICI</dd></div>
+                <div><dt>100</dt><dd>DİL · TEK CÜMLE</dd></div>
+                <div><dt>∞</dt><dd>SÜRESİZ</dd></div>
+              </dl>
             </div>
-            <div className="hero-visual-wrap">
-              <EyePortal />
-              <div className="hero-visual-caption"><span>FIG. 001</span><span>AN EYE INTO OUR UNIVERSE</span><span>↘</span></div>
-            </div>
-            <div className="hero-side-label">DESIGNED WITH FEELING <span>✳</span> BUILT FOR ONE</div>
-            <div className="hero-bottom-rule"><span>SCROLL TO ENTER</span><span className="scroll-line"/><span>01 — 03</span></div>
+            <figure className="hero-visual">
+              <RubyHeartCanvas ref={heart} className="hero-heart" fill={0.74} onTap={tapHeart} label="Kalbe dokun: kalbin rengi değişir" />
+              <figcaption>
+                <span>FIG. 001 — KALBİN ÇEKİRDEĞİ</span>
+                <span className="bpm"><i aria-hidden="true">♥</i> 70 BPM</span>
+              </figcaption>
+            </figure>
           </section>
 
-          <section className="manifesto-section" id="story">
-            <div className="section-intro reveal-on-scroll">
-              <div className="eyebrow eyebrow--dark"><span className="eyebrow-line"/><span>01 / THE IDEA</span></div>
-              <h2>Bir dijital mektup.<br/><em>Biraz kod,</em> çokça kalp.</h2>
-              <p>Bu bir uygulamadan fazlası. Eski terminal hissini, kozmik bir yolculuğu ve tek bir cümleyi aynı yerde buluşturan küçük bir dijital ritüel.</p>
+          <section className="protocol" id="protokol">
+            <div className="section-head">
+              <p className="eyebrow"><span className="dot" /> PROTOKOL · 4 ADIM</p>
+              <h2>Kalbe giden yol<br /><em>dört adım</em> sürer.</h2>
             </div>
-            <div className="manifesto-grid">
-              <article className="manifesto-card manifesto-card--light reveal-on-scroll">
-                <div className="card-topline"><span>01 / PROTOCOL</span><span>↗</span></div>
-                <div className="manifesto-icon"><SignalIcon type="lock"/></div>
-                <h3>Bir kapı, tek bir anahtar.</h3>
-                <p>Terminalin her adımı, kalbe biraz daha yaklaşmak için tasarlandı. Komut senden, anlam bizden.</p>
-                <div className="card-foot"><span className="mini-status mini-status--blue"/> AUTHENTICATION SEQUENCE</div>
-              </article>
-              <article className="manifesto-card manifesto-card--rose reveal-on-scroll">
-                <div className="card-topline"><span>02 / CORE MEMORY</span><span>↗</span></div>
-                <div className="manifesto-icon"><SignalIcon type="heart"/></div>
-                <h3>Her şeyin merkezinde sen.</h3>
-                <p>Parçacıklar bir kalbe dönüşürken, sistemin tek bir mesajı vardır: bütün yollar sana çıkar.</p>
-                <div className="card-foot"><span className="mini-status mini-status--pink"/> HEARTBEAT DETECTED</div>
-              </article>
-              <article className="manifesto-card manifesto-card--dark reveal-on-scroll">
-                <div className="card-topline"><span>03 / INFINITE LOOP</span><span>↗</span></div>
-                <div className="manifesto-icon"><SignalIcon type="orbit"/></div>
-                <h3>Sonu olmayan bir döngü.</h3>
-                <p>Son sahne bittiğinde bile evren dönmeye devam eder. Çünkü bazı hislerin çıkış tuşu yoktur.</p>
-                <div className="card-foot"><span className="mini-status mini-status--green"/> SERVICE: ALWAYS ON</div>
-              </article>
-            </div>
+            <ol className="steps">
+              {STEPS.map((s) => (
+                <li className="step" key={s.n}>
+                  <span className="step-n">{s.n}</span>
+                  <h3>{s.title}</h3>
+                  <code>{s.code}</code>
+                  <p>{s.body}</p>
+                </li>
+              ))}
+            </ol>
           </section>
 
-          <section className="signal-section" id="signal">
-            <div className="signal-backdrop" aria-hidden="true"><span/><span/><span/></div>
-            <div className="signal-copy reveal-on-scroll">
-              <div className="eyebrow eyebrow--light"><span className="eyebrow-line"/><span>02 / THE SIGNAL</span></div>
-              <p className="signal-kicker">A MESSAGE BEYOND THE STARS</p>
-              <h2>Sen yaklaştıkça,<br/><em>evren uyanır.</em></h2>
-              <p className="signal-body">Bir göz açılır. Uzak bir galaksi dönmeye başlar. Ekranda binlerce parçacık bir araya gelir ve içlerinden yalnızca bir mesaj doğar.</p>
-              <a className="signal-link" href="#access"><span>Bu yolculuğu başlat</span><ArrowUpRight /></a>
-              <div className="signal-data"><div><strong>∞</strong><span>ENDLESS REPLAY</span></div><div><strong>001</strong><span>ONE RECIPIENT</span></div><div><strong>♥</strong><span>LIVE FROM THE CORE</span></div></div>
+          <section className="access" id="erisim">
+            <div className="access-copy">
+              <p className="eyebrow"><span className="dot" /> ERİŞİM · TERMINAL</p>
+              <h2>Hazır olduğunda,<br /><em>kalbe gir.</em></h2>
+              <p>Terminal açık. Komutu yaz, parolayla kendini doğrula ve kalbe okuma/yazma izni ver. Gerisini çekirdek halleder.</p>
+              <ul className="access-notes">
+                <li><span>⌨</span> Telefonda komutu tek dokunuşla yazdırabilirsin.</li>
+                <li><span>♪</span> Sesi aç: sahne müziğin vuruşlarıyla oynar.</li>
+                <li><span>i</span> Bu romantik bir oyundur, gerçek bir güvenlik sistemi değildir.</li>
+              </ul>
             </div>
-            <div className="signal-visual reveal-on-scroll">
-              <div className="blackhole-visual" aria-hidden="true">
-                <div className="blackhole-visual__starfield" />
-                <div className="blackhole-visual__ring blackhole-visual__ring--outer" />
-                <div className="blackhole-visual__ring blackhole-visual__ring--middle" />
-                <div className="blackhole-visual__disk" />
-                <div className="blackhole-visual__core" />
-                <div className="blackhole-visual__orbit-dot blackhole-visual__orbit-dot--one" />
-                <div className="blackhole-visual__orbit-dot blackhole-visual__orbit-dot--two" />
-                <div className="blackhole-visual__orbit-dot blackhole-visual__orbit-dot--three" />
-                <div className="blackhole-visual__annotation blackhole-visual__annotation--top"><span>CORE SIGNAL</span><i>0.001 ms</i></div>
-                <div className="blackhole-visual__annotation blackhole-visual__annotation--bottom"><span>GRAVITY: INFINITE</span><i>LOVE / UNBOUND</i></div>
-              </div>
-              <div className="signal-caption"><span>VISUAL STUDY / 002</span><span>GRAVITY HAS A NAME</span></div>
+            <div className="access-terminal">
+              <TerminalGate onStartSequence={start} />
             </div>
           </section>
 
-          <section className="access-section" id="access">
-            <div className="access-topline"><div className="eyebrow eyebrow--dark"><span className="eyebrow-line"/><span>03 / THE ACCESS</span></div><span className="access-system-label"><i/> SYSTEM AVAILABLE · 24/7</span></div>
-            <div className="access-layout">
-              <div className="access-copy reveal-on-scroll">
-                <div className="access-number">03<span>—</span>∞</div>
-                <h2>Hazır olduğunda,<br/><em>kalbe gir.</em></h2>
-                <p>Terminali aç. Komutunu yaz. Doğru parolayla çekirdeğe ulaş ve sistemin senin için hazırladığı son mesajı gör.</p>
-                <div className="access-list">
-                  <div><span className="access-list__number">01</span><span><strong>Connect</strong><small>Komut satırını başlat.</small></span><span className="access-list__status">READY</span></div>
-                  <div><span className="access-list__number">02</span><span><strong>Authenticate</strong><small>Parolayla kendini doğrula.</small></span><span className="access-list__status">LOCKED</span></div>
-                  <div><span className="access-list__number">03</span><span><strong>Feel everything</strong><small>Kalbin evrenini serbest bırak.</small></span><span className="access-list__status">WAITING</span></div>
-                </div>
-                <p className="access-disclaimer"><span>i</span> Bu terminal, romantik bir dijital deneyimin parçasıdır; gerçek hesap güvenliği sağlamaz.</p>
+          <section className="langs" id="diller">
+            <div className="section-head section-head--row">
+              <div>
+                <p className="eyebrow"><span className="dot" /> 100 DİL · TEK CÜMLE</p>
+                <h2>Aynı cümle,<br /><em>yüz farklı sesle.</em></h2>
               </div>
-              <div className="access-terminal-wrap reveal-on-scroll">
-                <div className="terminal-orbit terminal-orbit--a"/><div className="terminal-orbit terminal-orbit--b"/>
-                <TerminalGate onStartSequence={startSequence} />
-                <div className="terminal-under-caption"><span>HEART.SYS / BUILD 001</span><span>MADE FOR ONE PERSON, WITH ALL THE FEELING.</span></div>
-              </div>
+              <Link className="btn btn--ghost" href="/100-dil">Hepsini dinle <span aria-hidden="true">→</span></Link>
             </div>
+            <Marquee />
           </section>
 
-          <section className="closing-section reveal-on-scroll">
-            <div className="closing-mark">♥</div>
-            <p className="closing-overline">A SMALL UNIVERSE, WITH A BIG FEELING</p>
-            <h2>Bütün yollar<br/><em>sana çıkar.</em></h2>
-            <a className="button button--light" href="#access"><span>Tekrar bağlan</span><ArrowUpRight /></a>
-            <div className="closing-orbit closing-orbit--one"/><div className="closing-orbit closing-orbit--two"/>
+          <section className="closing">
+            <span className="closing-mark" aria-hidden="true">♥</span>
+            <p className="eyebrow eyebrow--center">A SMALL UNIVERSE, WITH A BIG FEELING</p>
+            <h2>Bütün yollar<br /><em>sana çıkar.</em></h2>
+            <a className="btn btn--ruby" href="#erisim">Kalbe bağlan <span aria-hidden="true">↗</span></a>
           </section>
         </main>
 
-        <footer className="site-footer">
-          <a className="brand brand--footer" href="#top"><BrandMark/><span className="brand-copy"><strong>LOVE MATRIX</strong><small>A UNIVERSE FOR ONE</small></span></a>
-          <div className="footer-center">DESIGNED WITH FEELING <span>♥</span> BUILT TO LAST</div>
-          <div className="footer-right"><span>LOCAL HEART / 127.0.0.1</span><span>© 2026 LENSTEDREAL</span><a href="#top" aria-label="Sayfanın başına dön">↑</a></div>
+        <footer className="foot">
+          <a className="brand" href="#top"><BrandMark /><span className="brand-copy"><strong>LOVE MATRIX</strong><small>A UNIVERSE FOR ONE</small></span></a>
+          <span className="foot-mid">DESIGNED WITH FEELING <i>♥</i> BUILT FOR ONE</span>
+          <span className="foot-right">© 2026 LENSTEDREAL <a href="#top" aria-label="Başa dön">↑</a></span>
         </footer>
       </div>
-      <ImmersiveLoveSequence active={sequenceOpen} onClose={closeSequence} />
+      <ImmersiveLoveSequence active={open} onClose={close} />
     </>
   );
 }

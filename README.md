@@ -1,13 +1,13 @@
 # Love Matrix — Next.js edition
 
-A responsive, cinematic personal-universe experience inspired by the original Love Matrix terminal flow and the visual references: ASCII heart art, a blinking cosmic eye / black-hole motif, and clean editorial website layouts.
+Tek bir kişiye adanmış sinematik bir web deneyimi: Kali terminali, parçacıklardan kalp ve aynı cümle yüz dilde. Ek bağımlılık yok.
 
 ## Stack
 
 - Next.js App Router
 - React + TypeScript
 - Tailwind CSS v4 (available alongside the custom visual system)
-- CSS animations, SVG portal art, Canvas particle choreography, and Web Audio tones
+- WebGL (ray-marched yakut kalp + bloom, parçacık motoru), Canvas matrix yağmuru, Web Audio phonk, Web Speech
 
 ## Run locally
 
@@ -25,16 +25,28 @@ npm run build
 npm start
 ```
 
-## Original interaction flow retained
+## Akış
 
-1. A short system boot sequence appears.
-2. The user submits a terminal command (the original default remains `sudo su - kalbin`).
-3. A password prompt checks the original Love Matrix passphrase list.
-4. A second prompt asks for `yes`, `y`, or `evet` to grant heart access.
-5. The full-screen sequence cycles through countdown, ROOT ACCESS, AUTHENTICATED, LENSTEDREAL, a particle heart, a rotating 3D-style heart, and `I LOVE YOU SEVGILIM`.
+0. **Kali açılışı** — ejderha logosu, yükleme çubuğu, boot mesajları (oturumda bir kez).
+1. **Ana sayfa** — canlı 3B yakut kalp (WebGL), 4 adımlık protokol, Kali terminali, 100 dil şeridi.
+2. **Kali terminali** — `sudo su - kalbin` (telefonda tek dokunuşla yazdırılır) → parola → root prompt'u → `chmod +rw /dev/kalp` izni (`yes`) → payload.
+3. **Sinematik sahne** — Instagram hikâyesindeki sürüm (8524b64) ve Kali sürümü (love2-8-10.html) birebir, müziğin vuruşlarına kilitli: toz → `3 · 2 · 1` → `ROOT ACCESS · AUTHENTICATED · LENSTEDREAL` → `YU · ARE · MY · LOVE` → parçacık kalp + nabız → dönen 3B kalp → `I LOVE 🫦❤️‍🔥 YOU SEVGILIM` → toz → baştan.
+4. **/100-dil** — aynı cümle 100 dilde; her cümle kendi dilinin sesiyle okunur (cihaz sesi → Google ses servisi → yoksa "ses yok" uyarısı; yanlış dilin sesiyle asla okunmaz).
 
-**Security note:** The original gate is an in-browser romantic easter egg, not real authentication. A passphrase list embedded in client-side JavaScript can be inspected. Never use this for real accounts, private data, or authorization of server resources.
+Müzik dış dosya kullanmaz: 140 BPM phonk tarayıcıda üretilir (808, cowbell, clap, swing hi-hat, reverb). Sesli okuma sırasında müzik kısılır.
 
+## Parola
+
+Parola kodda düz yazılmaz, yalnızca özeti tutulur (`components/terminal-gate.tsx` → `PASS_HASHES`).
+Büyük/küçük harf, boşluk ve Türkçe karakter farkı önemsizdir. Yeni parolanın özetini üretmek için:
+
+```bash
+node -e 'const f=s=>s.toLocaleLowerCase("tr-TR").replace(/ş/g,"s").replace(/ı/g,"i").replace(/ğ/g,"g").replace(/ü/g,"u").replace(/ö/g,"o").replace(/ç/g,"c").replace(/[^a-z0-9]/g,"");function c(t,e=0x6b616c70){let h1=0xdeadbeef^e,h2=0x41c6ce57^e;for(let i=0;i<t.length;i++){const ch=t.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677)}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return(4294967296*(2097151&h2)+(h1>>>0)).toString(36)}console.log(c(f(process.argv[1])))' "yeni parola"
+```
+
+Çıkan değeri `PASS_HASHES` içine yaz. İpucu metni aynı dosyada (`ipucu: …`).
+
+**Güvenlik notu:** Bu romantik bir oyun kapısıdır, gerçek kimlik doğrulama değildir. Gerçek hesaplar veya özel veriler için kullanma.
 
 ## Termux / Android ARM64
 
